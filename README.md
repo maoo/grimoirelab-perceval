@@ -14,6 +14,7 @@ are:
     bugzilla         Fetch bugs from a Bugzilla server
     bugzillarest     Fetch bugs from a Bugzilla server (>=5.0) using its REST API
     confluence       Fetch contents from a Confluence server
+    csv              Fetch entries from a CSV file
     discourse        Fetch posts from Discourse site
     dockerhub        Fetch repository data from Docker Hub site
     gerrit           Fetch reviews from a Gerrit server
@@ -157,7 +158,25 @@ $ perceval bugzillarest 'https://bugzilla.mozilla.org/' --backend-user user --ba
 ### Confluence
 ```
 $ perceval confluence 'https://wiki.opnfv.org/' --from-date '2016-01-01'
+$ perceval confluence 'https://wiki.opnfv.org/' --from-date '2016-01-01' --add_ancestors True
 ```
+
+### CSV
+
+#### Locating a CSV file via URL
+```
+$ perceval csv http://samplecsvs.s3.amazonaws.com/Sacramentorealestatetransactions.csv "street,city,zip,state,beds,baths,sq__ft,type,sale_date,price,latitude,longitude" "street,city,zip,state" "sale_date"
+```
+
+#### Locating a CSV file via file path
+Here's an example for FINOS meeting attendance
+```
+$ perceval csv file:///Users/m/w/projects/metadata-tool/roster-data.csv "email,name,org, githubid,program,activity,date" "email,name,date" "date" --date_formats "%Y-%m-%d,%Y-%m,%Y"
+```
+
+#### Other optionns
+- `--separator`, defaults to `,`
+- `--skip_header`, defaults to `True`
 
 ### Discourse
 ```

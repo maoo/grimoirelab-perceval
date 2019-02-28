@@ -56,11 +56,12 @@ class Confluence(Backend):
 
     CATEGORIES = [CATEGORY_HISTORICAL_CONTENT]
 
-    def __init__(self, url, tag=None, archive=None):
+    def __init__(self, url, add_ancestors, tag=None, archive=None):
         origin = url
 
         super().__init__(origin, tag=tag, archive=archive)
         self.url = url
+        self.add_ancestors = add_ancestors
         self.client = None
 
     def fetch(self, category=CATEGORY_HISTORICAL_CONTENT, from_date=DEFAULT_DATETIME):
@@ -91,6 +92,16 @@ class Confluence(Backend):
 
         return items
 
+    @staticmethod
+    def add_ancestors(url_prefix, item, content):
+        ancestors = []
+        if ('ancestors' in content) and (content['ancestors']):
+            for ancestor in content['ancestors']:
+                ancestors.append(url_prefix + ancestor['_links']['webui'])
+        if ancestors:
+            item['ancestors'] = ancestors
+        return item
+
     def fetch_items(self, category, **kwargs):
         """Fetch the contents
 
@@ -118,6 +129,7 @@ class Confluence(Backend):
 
             for hc in hcs:
                 hc['content_url'] = content_url
+                hc = Confluence.add_ancestors(self.origin, hc, content)
                 yield hc
                 nhcs += 1
 
@@ -215,7 +227,7 @@ class Confluence(Backend):
     def _init_client(self, from_archive=False):
         """Init client"""
 
-        return ConfluenceClient(self.url, archive=self.archive, from_archive=from_archive)
+        return ConfluenceClient(self.url, self.add_ancestors, archive=self.archive, from_archive=from_archive)
 
     def __fetch_contents_summary(self, from_date):
         logger.debug("Fetching contents summary from %s", str(from_date))
@@ -268,6 +280,10 @@ class ConfluenceCommand(BackendCommand):
 
     BACKEND = Confluence
 
+    # def _pre_init(self):
+    #     """Initialize repositories directory path"""
+    #     setattr(self.parsed_args, 'add_ancestors', add_ancestors)
+
     @staticmethod
     def setup_cmd_parser():
         """Returns the Bugzilla argument parser."""
@@ -279,6 +295,12 @@ class ConfluenceCommand(BackendCommand):
         parser.parser.add_argument('url',
                                    help="URL of the Confluence server")
 
+        # Optional arguments
+        group = parser.parser.add_argument_group('Confluence page options')
+        group.add_argument('--add_ancestors', dest='add_ancestors',
+                           nargs='+', type=bool, default=False,
+                           help="Indexes ancestor page URLs")
+
         return parser
 
 
@@ -289,6 +311,7 @@ class ConfluenceClient(HttpClient):
     Confluence server using its REST API.
 
     :param base_url: URL of the Confluence server
+    :param add_ancestors: Whether to index ancestors pages or not
     :param archive: an archive to store/read fetched data
     :param from_archive: it tells whether to write/read the archive
     """
@@ -315,8 +338,9 @@ class ConfluenceClient(HttpClient):
     VEXPAND = ['body.storage', 'history', 'version']
     VHISTORICAL = 'historical'
 
-    def __init__(self, base_url, archive=None, from_archive=False):
+    def __init__(self, base_url, add_ancestors, archive=None, from_archive=False):
         super().__init__(base_url.rstrip('/'), archive=archive, from_archive=from_archive)
+        self.add_ancestors = add_ancestors
 
     def contents(self, from_date=DEFAULT_DATETIME,
                  offset=None, max_contents=MAX_CONTENTS):
@@ -332,6 +356,8 @@ class ConfluenceClient(HttpClient):
         :param limit: maximum number of contents to fetch per request
         """
         resource = self.RCONTENTS + '/' + self.MSEARCH
+        if self.add_ancestors:
+            resource = resource + "?expand=ancestors"
 
         # Set confluence query parameter (cql)
         date = from_date.strftime("%Y-%m-%d %H:%M")

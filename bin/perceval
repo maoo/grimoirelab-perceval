@@ -43,6 +43,7 @@ are:
     bugzilla         Fetch bugs from a Bugzilla server
     bugzillarest     Fetch bugs from a Bugzilla server (>=5.0) using its REST API
     confluence       Fetch contents from a Confluence server
+    csv              Fetch entries from a CSV file
     discourse        Fetch posts from Discourse site
     dockerhub        Fetch repository data from Docker Hub site
     gerrit           Fetch reviews from a Gerrit server
